@@ -1,4 +1,4 @@
-"""Launch human play, inspect an untrained model, or run headless inference."""
+"""Launch human play, network playback, evolution or headless evaluation."""
 
 import argparse
 import json
@@ -32,14 +32,24 @@ def run_training(args: argparse.Namespace, initial=None) -> int:
         trainer = Trainer(TrainingConfig(**values), output_dir=args.output_dir or "models", initial=initial)
     print(f"TRAINING: {trainer.config.population_size} networks, courses {trainer.config.evaluation_seeds}, "
           f"starting after generation {trainer.generation}", flush=True)
-    action = "quit"
     if args.headless:
         trainer.run(args.generations, report=lambda message: print(message, flush=True))
     else:
         import pygame
         from visualization.training_dashboard import TrainingDashboard
         try:
-            action = TrainingDashboard(trainer, args.generations).run()
+            dashboard = TrainingDashboard(trainer, args.generations, args.train_speed)
+            while dashboard.run() == "watch":
+                from ai.controller import NetworkController
+                from game.application import Application
+                app = Application(trainer.settings, seed=args.seed,
+                                  controller=NetworkController(trainer.champion()),
+                                  auto_restart=not args.no_auto_restart)
+                app.start()
+                app.run()
+                if not app.training_requested:
+                    break
+                dashboard.reopen()
         except pygame.error as exc:
             pygame.quit()
             raise ValueError(f"Unable to open training display: {exc}") from exc
@@ -49,19 +59,6 @@ def run_training(args: argparse.Namespace, initial=None) -> int:
         (trainer.output_dir / "evaluation.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
         print(f"Champion: {trainer.output_dir / 'best.npz'}; completed generations: {trainer.generation}")
         print("UNSEEN COURSES: " + json.dumps(summary), flush=True)
-        if action == "watch":
-            from ai.controller import NetworkController
-            from game.application import Application
-            app = Application(trainer.settings, seed=args.seed, controller=NetworkController(trainer.champion()),
-                              auto_restart=not args.no_auto_restart)
-            app.start()
-            app.run()
-            if app.training_requested:
-                # Continue the same population rather than discard its learning.
-                args.resume = str(trainer.output_dir / "checkpoint.npz")
-                args.output_dir = str(trainer.output_dir)
-                args.training_config = args.population = args.training_seed = args.max_steps = None
-                return run_training(args)
     return 0
 
 
@@ -73,10 +70,14 @@ def main() -> int:
     models = parser.add_mutually_exclusive_group()
     models.add_argument("--create-model", metavar="PATH", help="save a new untrained network and exit (.npz)")
     models.add_argument("--model", metavar="PATH", help="let a saved network control the bird (.npz)")
+    models.add_argument("--watch", nargs="?", const="models/best.npz", metavar="PATH",
+                        help="start champion playback immediately (default: models/best.npz)")
     parser.add_argument("--network-seed", type=int, default=0, help="initial weights seed for --create-model")
     parser.add_argument("--no-auto-restart", action="store_true", help="keep network watch mode on the game-over screen")
     parser.add_argument("--train", action="store_true", help="evolve network weights (opens a learning view unless --headless)")
     parser.add_argument("--generations", type=int, default=50, help="additional generations to train (default: 50)")
+    parser.add_argument("--train-speed", type=int, choices=(1, 2, 4, 8, 16, 32, 64, 128), default=16,
+                        help="initial interactive training speed target (default: 16)")
     parser.add_argument("--resume", metavar="CHECKPOINT", help="resume training from a saved population (.npz)")
     parser.add_argument("--training-config", metavar="JSON", help="override genetic algorithm settings from JSON")
     parser.add_argument("--population", type=int, help="population size with 5%% elites and immigrants (default: 100)")
@@ -92,8 +93,10 @@ def main() -> int:
         parser.error("--network-seed must be nonnegative")
     if args.generations < 1 or (args.max_steps is not None and args.max_steps < 1):
         parser.error("--generations and --max-steps must be positive")
-    if args.train and (args.create_model or args.evaluate):
-        parser.error("--train cannot be combined with --create-model or --evaluate")
+    if args.train and (args.create_model or args.evaluate or args.watch):
+        parser.error("--train cannot be combined with --create-model, --evaluate or --watch")
+    if args.watch:
+        args.model = args.watch
     if args.resume and not args.train:
         parser.error("--resume requires --train")
     if args.evaluate and not args.model:
@@ -172,6 +175,8 @@ def main() -> int:
         return 1
     try:
         app = Application(seed=args.seed, controller=controller, auto_restart=not args.no_auto_restart)
+        if args.watch:
+            app.start()
         app.run()
         if app.training_requested:
             return run_training(args, initial=None if controller is None else controller.network)

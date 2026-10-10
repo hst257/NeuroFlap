@@ -109,10 +109,12 @@ the population scene while keeping progress and controls visible.
 .\.venv\Scripts\python.exe main.py --model models/best.npz --evaluate --evaluation-seeds 601 602 603 --max-steps 3600
 ```
 
-Visible controls: Space pauses, +/- changes speed, B shows only the current
-leader, R toggles scene rendering, S saves, W stops learning and watches the
-champion, and Esc saves and exits. From ordinary play or fixed model watching,
-T starts the trainer. Watching a model does not update its parameters.
+Visible controls: Space pauses, +/- changes speed, B shows only the saved
+champion, R toggles scene rendering, S saves, W opens champion playback, and Esc
+saves and exits. T from that playback returns to the same live training session;
+T from ordinary play or standalone model watching starts a new trainer. Watching
+a model does not update its parameters. The [Phase 4 guide](learning_visualization.md)
+explains the clickable controls and measured simulation speed.
 
 The best model is `models/best.npz`; keep using `untrained.npz` only when you
 want to inspect random initial behavior. A fresh training command overwrites

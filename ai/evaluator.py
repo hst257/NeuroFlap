@@ -37,10 +37,14 @@ class BatchEpisode:
         self.settings, self.seed, self.max_steps = settings, seed, max_steps
         self.world = Environment(settings, seed)
         n = len(values)
-        self.w1 = values[:, :40].reshape(n, 8, 5).copy()
-        self.b1 = values[:, 40:48].copy()
-        self.w2 = values[:, 48:56].copy()
-        self.b2 = values[:, 56].copy()
+        # Retain the exact genomes that produced this episode for view selection.
+        # A dashboard never changes these arrays or controls bird decisions.
+        self.genomes = values.copy()
+        self.genomes.flags.writeable = False
+        self.w1 = self.genomes[:, :40].reshape(n, 8, 5)
+        self.b1 = self.genomes[:, 40:48]
+        self.w2 = self.genomes[:, 48:56]
+        self.b2 = self.genomes[:, 56]
         self.y = np.full(n, self.world.bird.y)
         self.velocity = np.zeros(n)
         self.alive = np.ones(n, dtype=bool)

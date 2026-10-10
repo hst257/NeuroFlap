@@ -2,12 +2,13 @@
 
 A playable, original Flappy Bird-inspired game in Python and Pygame, with a
 manually implemented NumPy neural network and a genetic algorithm trainer.
-**Phases 1–3 are implemented**, with an interactive population view to observe
-learning. All artwork is drawn in code; no downloaded assets are needed.
+**Phases 1–4 are implemented**, including a live learning dashboard and champion
+playback. All artwork is drawn in code; no downloaded assets are needed.
 
 [View the four-screen visual preview](docs/preview.png).
 [View the network-control preview](docs/network-preview.png).
 [View learning and the trained champion](docs/training-preview.png).
+[View the Phase 4 dashboard](docs/learning-preview.png).
 
 ## Start actual learning
 
@@ -21,10 +22,12 @@ cd Z:\Code\NeuroFlap
 
 This opens a live population view and evolves 100 networks. The generation
 counter advances after every bird has been evaluated on all training courses.
-Space pauses, +/- changes speed, B shows the current leader, R toggles scene
-rendering, S saves, W stops training and watches the available champion, and Esc
-saves and exits. The interactive view has a frame budget to keep controls
-responsive; its displayed speed is an upper bound depending on hardware.
+Space pauses, +/- changes speed, B shows only the saved champion, R toggles scene
+rendering, S saves, W opens champion playback, and Esc saves and exits. These
+controls also have clickable buttons. The dashboard shows measured simulation
+speed alongside its target; a frame budget keeps controls responsive. Use
+`--train-speed 32` to start at a different target. N trains another block of
+generations once the requested block completes.
 
 Train faster without opening a window:
 
@@ -35,7 +38,7 @@ Train faster without opening a window:
 Watch the trained champion:
 
 ```powershell
-.\.venv\Scripts\python.exe main.py --model models/best.npz --seed 42
+.\.venv\Scripts\python.exe main.py --watch --seed 42
 ```
 
 Continue the saved population for 50 additional generations:
@@ -54,13 +57,17 @@ an untrained example.
 A fresh `--train` run replaces the training outputs in `models/`; use `--resume`
 to retain the population or `--output-dir another-run` to keep separate runs.
 Pressing T from a fixed model starts a fresh population that includes that model.
-Pressing T after using W to watch a live training champion resumes its checkpoint.
+Pressing T after using W returns to the same live population, course tick and
+generation target. Training stays frozen during playback. After restarting the
+program, `--resume` replays any partially evaluated generation from its start.
 
 The bundled 50-generation run's champion scored 22 with 168 flaps on seed 42
 over 1,800 ticks. On held-out seeds 101, 202, 303, 404 and 505 it scored
 `[22, 22, 1, 22, 22]` (average 17.8). Four runs reached the 30-second step limit;
 one died after one pipe. These bounded results demonstrate learning, not mastery.
 Full details are in the [Phase 3 walkthrough](docs/training.md).
+See the [Phase 4 guide](docs/learning_visualization.md) for dashboard statistics,
+champion selection and controls. Phase 5's analytics graphs are still to come.
 
 ## Run on Windows
 
